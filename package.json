@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.31.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "next": "16.2.4",

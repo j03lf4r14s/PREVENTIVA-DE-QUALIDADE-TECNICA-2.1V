@@ -146,6 +146,8 @@ interface ToastState {
   type: 'success' | 'error' | 'info';
 }
 
+type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+
 interface TooltipState {
   text: string;
   x: number;
@@ -264,6 +266,7 @@ export default function FiscalPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
 
   /* ----- refs ----- */
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -563,6 +566,31 @@ export default function FiscalPage() {
   };
 
   const hideTooltip = () => setTooltip(null);
+
+  /* ======================== AZURE UPLOAD ======================== */
+  const uploadPdfToServer = useCallback(
+    async (blob: Blob, filename: string) => {
+      setUploadStatus('uploading');
+      try {
+        const fd = new FormData();
+        fd.append('pdf', blob, filename);
+        fd.append('cliente', clientName);
+        fd.append('tecnico', technicianName);
+        fd.append('fiscal', fiscalName);
+        fd.append('data', visitDate);
+        fd.append('score', String(pct));
+
+        const res = await fetch('/api/upload-pdf', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        setUploadStatus('success');
+        showToast('PDF salvo no servidor!', 'success');
+      } catch {
+        setUploadStatus('error');
+        showToast('Erro ao salvar no servidor', 'error');
+      }
+    },
+    [clientName, technicianName, fiscalName, visitDate, pct, showToast]
+  );
 
   /* ======================== PDF GENERATION ======================== */
   const generatePDF = useCallback(async () => {
@@ -965,6 +993,8 @@ export default function FiscalPage() {
       if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [] })) {
         const blob = doc.output('blob');
         const file = new File([blob], filename, { type: 'application/pdf' });
+        // Upload in parallel — do not block share/download
+        uploadPdfToServer(blob, filename);
         try {
           await navigator.share({ title: 'Ficha Fiscal Técnica', files: [file] });
           showToast('PDF compartilhado!', 'success');
@@ -974,6 +1004,8 @@ export default function FiscalPage() {
         }
       }
 
+      const blob = doc.output('blob');
+      uploadPdfToServer(blob, filename);
       doc.save(filename);
       showToast('PDF gerado e baixado!', 'success');
     } catch (err) {
@@ -984,7 +1016,7 @@ export default function FiscalPage() {
     clientName, technicianName, fiscalName, visitDate,
     gpsAddress, gpsCoords, checklist, observations, photos,
     ratingEnabled, ratings, signatureDataUrl,
-    pct, sim, nao, na, showToast,
+    pct, sim, nao, na, showToast, uploadPdfToServer,
   ]);
 
   /* ============================================================
@@ -1443,6 +1475,19 @@ export default function FiscalPage() {
           <i className="fa-solid fa-file-pdf" />
           Gerar Relatório PDF
         </button>
+        {uploadStatus !== 'idle' && (
+          <span className={`${styles.uploadIndicator} ${styles[`upload_${uploadStatus}`]}`}>
+            {uploadStatus === 'uploading' && (
+              <><i className="fa-solid fa-spinner fa-spin" /> Salvando...</>
+            )}
+            {uploadStatus === 'success' && (
+              <><i className="fa-solid fa-cloud-arrow-up" /> Salvo</>
+            )}
+            {uploadStatus === 'error' && (
+              <><i className="fa-solid fa-triangle-exclamation" /> Falha no upload</>
+            )}
+          </span>
+        )}
       </div>
 
       {/* ---------- Toast ---------- */}

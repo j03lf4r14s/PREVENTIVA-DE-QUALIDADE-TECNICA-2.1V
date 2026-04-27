@@ -926,3 +926,33 @@
   .btnPdf { padding: 12px 24px; font-size: 14px; }
   .toast { right: 12px; bottom: 12px; max-width: calc(100vw - 24px); }
 }
+
+/* ---------- Upload Indicator ---------- */
+.uploadIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-top: 10px;
+}
+
+.upload_uploading {
+  background: rgba(229, 160, 0, 0.15);
+  color: #e5a000;
+  border: 1px solid rgba(229, 160, 0, 0.3);
+}
+
+.upload_success {
+  background: rgba(0, 200, 83, 0.12);
+  color: #00c853;
+  border: 1px solid rgba(0, 200, 83, 0.3);
+}
+
+.upload_error {
+  background: rgba(229, 0, 18, 0.12);
+  color: #e50012;
+  border: 1px solid rgba(229, 0, 18, 0.3);
+}
