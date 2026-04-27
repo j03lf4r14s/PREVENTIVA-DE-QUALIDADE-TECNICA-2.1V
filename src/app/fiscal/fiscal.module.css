@@ -476,6 +476,36 @@
   gap: 8px;
 }
 
+.photoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.photoCommentInput {
+  width: 100%;
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 11px;
+  padding: 5px 8px;
+  resize: vertical;
+  min-height: 44px;
+  outline: none;
+  transition: border-color 0.2s;
+  line-height: 1.5;
+}
+
+.photoCommentInput:focus {
+  border-color: var(--red);
+}
+
+.photoCommentInput::placeholder {
+  color: var(--text-dim);
+}
+
 .photoThumb {
   position: relative;
   aspect-ratio: 4/3;

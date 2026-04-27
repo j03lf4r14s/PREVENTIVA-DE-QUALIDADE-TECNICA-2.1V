@@ -138,6 +138,7 @@ interface PhotoItem {
   timestamp: string;
   address: string;
   fromCamera: boolean;
+  comentario: string;
 }
 
 interface ToastState {
@@ -381,6 +382,7 @@ export default function FiscalPage() {
           timestamp,
           address,
           fromCamera: true,
+          comentario: '',
         });
       }
       setPhotos((prev) => [...prev, ...newPhotos]);
@@ -411,6 +413,7 @@ export default function FiscalPage() {
           timestamp: formatDate(new Date()),
           address: '',
           fromCamera: false,
+          comentario: '',
         });
       }
       setPhotos((prev) => [...prev, ...newPhotos]);
@@ -429,6 +432,12 @@ export default function FiscalPage() {
     },
     [lightboxIndex, showToast]
   );
+
+  const updatePhotoComment = useCallback((id: string, text: string) => {
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, comentario: text } : p))
+    );
+  }, []);
 
   const downloadSinglePhotoPdf = useCallback(
     async (photo: PhotoItem) => {
@@ -664,6 +673,7 @@ export default function FiscalPage() {
           textColor: [232, 232, 232],
           lineColor: [42, 42, 42],
           lineWidth: 0.2,
+          overflow: 'linebreak' as const,
         },
         columnStyles: {
           0: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25 },
@@ -757,42 +767,76 @@ export default function FiscalPage() {
       y += obsLines.length * 4.5 + 8;
 
       if (photos.length > 0) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(229, 0, 18);
-        doc.text('04 — REGISTRO FOTOGRÁFICO', margin, y);
-        y += 5;
-
-        const imgW = (pW - margin * 2 - 6) / 2;
-        const imgH = imgW * 0.75;
-        let col = 0;
+        /* Helper: get natural image dimensions for aspect ratio */
+        const getImgDims = (dataUrl: string): Promise<{ w: number; h: number }> =>
+          new Promise((res) => {
+            const img = new Image();
+            img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight });
+            img.onerror = () => res({ w: 4, h: 3 });
+            img.src = dataUrl;
+          });
 
         for (let i = 0; i < photos.length; i++) {
           const photo = photos[i];
-          if (y + imgH + 10 > pH - 20) {
-            doc.addPage();
-            doc.setFillColor(10, 10, 10);
-            doc.rect(0, 0, pW, pH, 'F');
-            y = 16;
-          }
-          const x = margin + col * (imgW + 6);
+
+          doc.addPage();
+          doc.setFillColor(10, 10, 10);
+          doc.rect(0, 0, pW, pH, 'F');
+
+          let py = 16;
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(229, 0, 18);
+          doc.text('04 — REGISTRO FOTOGRÁFICO', margin, py);
+          py += 6;
+
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 100, 100);
+          doc.text(
+            `Foto ${i + 1} de ${photos.length}${photo.fromCamera ? ' · câmera' : ' · galeria'}`,
+            margin,
+            py
+          );
+          py += 6;
+
+          /* Calculate aspect-ratio-correct image height */
+          const imgW = pW - margin * 2;
+          let aspectRatio = 0.75; // default 4:3
           try {
-            doc.addImage(photo.dataUrl, 'JPEG', x, y, imgW, imgH, undefined, 'FAST');
+            const dims = await getImgDims(photo.dataUrl);
+            if (dims.w > 0) aspectRatio = dims.h / dims.w;
+          } catch { /* use default */ }
+
+          /* Reserve space below image for comment if present */
+          const comentario = photo.comentario?.trim() || '';
+          const commentLines = comentario
+            ? doc.splitTextToSize(comentario, imgW)
+            : ([] as string[]);
+          const commentH = commentLines.length > 0 ? commentLines.length * 4.5 + 10 : 0;
+
+          const maxImgH = pH - py - 20 - commentH;
+          const imgH = Math.min(imgW * aspectRatio, maxImgH);
+
+          try {
+            doc.addImage(photo.dataUrl, 'JPEG', margin, py, imgW, imgH, undefined, 'NONE');
           } catch {
             doc.setFillColor(26, 26, 26);
-            doc.rect(x, y, imgW, imgH, 'F');
+            doc.rect(margin, py, imgW, imgH, 'F');
             doc.setFontSize(8);
             doc.setTextColor(100, 100, 100);
-            doc.text('Imagem não disponível', x + imgW / 2, y + imgH / 2, { align: 'center' });
+            doc.text('Imagem não disponível', margin + imgW / 2, py + imgH / 2, { align: 'center' });
           }
-          doc.setFontSize(6.5);
-          doc.setTextColor(100, 100, 100);
-          doc.text(`Foto ${i + 1}${photo.fromCamera ? ' 📷' : ''}`, x, y + imgH + 3.5);
 
-          col++;
-          if (col === 2) {
-            col = 0;
-            y += imgH + 10;
+          py += imgH + 5;
+
+          /* Comment below photo */
+          if (commentLines.length > 0) {
+            doc.setFontSize(8.5);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(200, 200, 200);
+            doc.text(commentLines, margin, py);
           }
         }
       }
@@ -1157,46 +1201,55 @@ export default function FiscalPage() {
               Nenhuma foto adicionada. Capture ou importe da galeria.
             </div>
           ) : (
-            <div className={styles.photoGrid}>
+          <div className={styles.photoGrid}>
               {photos.map((photo, idx) => (
-                <div
-                  key={photo.id}
-                  className={styles.photoThumb}
-                  onClick={() => setLightboxIndex(idx)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.dataUrl} alt={`Foto ${idx + 1}`} />
-                  {photo.fromCamera && (
-                    <span className={styles.photoCameraTag}>
-                      <i className="fa-solid fa-camera" /> CAM
-                    </span>
-                  )}
-                  <div className={styles.photoOverlay} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className={styles.photoOverlayBtn}
-                      type="button"
-                      title="Visualizar"
-                      onClick={() => setLightboxIndex(idx)}
-                    >
-                      <i className="fa-solid fa-magnifying-glass" />
-                    </button>
-                    <button
-                      className={styles.photoOverlayBtn}
-                      type="button"
-                      title="Download PDF"
-                      onClick={() => downloadSinglePhotoPdf(photo)}
-                    >
-                      <i className="fa-solid fa-file-pdf" />
-                    </button>
-                    <button
-                      className={styles.photoOverlayBtn}
-                      type="button"
-                      title="Excluir"
-                      onClick={() => deletePhoto(photo.id)}
-                    >
-                      <i className="fa-solid fa-trash" />
-                    </button>
+                <div key={photo.id} className={styles.photoItem}>
+                  <div
+                    className={styles.photoThumb}
+                    onClick={() => setLightboxIndex(idx)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.dataUrl} alt={`Foto ${idx + 1}`} />
+                    {photo.fromCamera && (
+                      <span className={styles.photoCameraTag}>
+                        <i className="fa-solid fa-camera" /> CAM
+                      </span>
+                    )}
+                    <div className={styles.photoOverlay} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className={styles.photoOverlayBtn}
+                        type="button"
+                        title="Visualizar"
+                        onClick={() => setLightboxIndex(idx)}
+                      >
+                        <i className="fa-solid fa-magnifying-glass" />
+                      </button>
+                      <button
+                        className={styles.photoOverlayBtn}
+                        type="button"
+                        title="Download PDF"
+                        onClick={() => downloadSinglePhotoPdf(photo)}
+                      >
+                        <i className="fa-solid fa-file-pdf" />
+                      </button>
+                      <button
+                        className={styles.photoOverlayBtn}
+                        type="button"
+                        title="Excluir"
+                        onClick={() => deletePhoto(photo.id)}
+                      >
+                        <i className="fa-solid fa-trash" />
+                      </button>
+                    </div>
                   </div>
+                  <textarea
+                    className={styles.photoCommentInput}
+                    placeholder="Comentário / observação..."
+                    value={photo.comentario}
+                    onChange={(e) => updatePhotoComment(photo.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    rows={2}
+                  />
                 </div>
               ))}
             </div>
