@@ -747,10 +747,14 @@ export default function FiscalPage() {
         afterChecklist
       );
 
-      /* ---- PAGE 3: Observations + Photos ---- */
+      /* ---- PAGE 3: Observations ---- */
       doc.addPage();
       doc.setFillColor(10, 10, 10);
       doc.rect(0, 0, pW, pH, 'F');
+
+      // Safe bottom boundary: footer line is at pH-10, keep content above pH-14
+      const BODY_BOT = pH - 14;
+      const OBS_LINE_H = 4.5;
 
       let y = 16;
       doc.setFontSize(10);
@@ -763,8 +767,25 @@ export default function FiscalPage() {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(210, 210, 210);
       const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
-      doc.text(obsLines, margin, y);
-      y += obsLines.length * 4.5 + 8;
+
+      // Issue 1 fix: render each observation line individually, break page when needed
+      for (const line of obsLines) {
+        if (y + OBS_LINE_H > BODY_BOT) {
+          doc.addPage();
+          doc.setFillColor(10, 10, 10);
+          doc.rect(0, 0, pW, pH, 'F');
+          y = 16;
+          doc.setFontSize(8.5);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(210, 210, 210);
+        }
+        doc.text(line, margin, y);
+        y += OBS_LINE_H;
+      }
+      y += 8;
+
+      // Track y position on the current page (after observations, or after last photo)
+      let currentY = y;
 
       if (photos.length > 0) {
         /* Helper: get natural image dimensions for aspect ratio */
@@ -837,17 +858,26 @@ export default function FiscalPage() {
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(200, 200, 200);
             doc.text(commentLines, margin, py);
+            py += commentH;
           }
+
+          // Update currentY to reflect position on the last photo's page
+          currentY = py;
         }
       }
 
-      /* ---- PAGE N-1: Ratings ---- */
+      /* ---- Ratings: flow after photos if space allows (Issue 2 fix) ---- */
       if (ratingEnabled) {
-        doc.addPage();
-        doc.setFillColor(10, 10, 10);
-        doc.rect(0, 0, pW, pH, 'F');
+        // Need ~80mm for title + 3 rating rows; add new page only if not enough room
+        const RATINGS_NEEDED = 80;
+        if (BODY_BOT - currentY < RATINGS_NEEDED) {
+          doc.addPage();
+          doc.setFillColor(10, 10, 10);
+          doc.rect(0, 0, pW, pH, 'F');
+          currentY = 16;
+        }
 
-        let ry = 16;
+        let ry = currentY;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(229, 0, 18);
@@ -882,35 +912,45 @@ export default function FiscalPage() {
           doc.text(`${score}/10`, sx + 2, ry + 0.5);
           ry += 9;
         });
+
+        currentY = ry + 5;
       }
 
-      /* ---- PAGE LAST: Signature ---- */
+      /* ---- Signature: flow after ratings if space allows (Issue 3 fix) ---- */
       if (signatureDataUrl) {
-        doc.addPage();
-        doc.setFillColor(10, 10, 10);
-        doc.rect(0, 0, pW, pH, 'F');
+        const sigW = pW - margin * 2;
+        const sigH = sigW * 0.3;
+        // title(~6) + date(~6) + image(sigH) + line+name(~14)
+        const SIGNATURE_NEEDED = 6 + 6 + sigH + 14;
+
+        if (BODY_BOT - currentY < SIGNATURE_NEEDED) {
+          doc.addPage();
+          doc.setFillColor(10, 10, 10);
+          doc.rect(0, 0, pW, pH, 'F');
+          currentY = 16;
+        }
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(229, 0, 18);
-        doc.text('06 — ASSINATURA', margin, 16);
+        doc.text('06 — ASSINATURA', margin, currentY);
+        currentY += 6;
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(120, 120, 120);
-        doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, 22);
+        doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, currentY);
+        currentY += 6;
 
-        const sigW = pW - margin * 2;
-        const sigH = sigW * 0.3;
-        doc.addImage(signatureDataUrl, 'PNG', margin, 28, sigW, sigH);
+        doc.addImage(signatureDataUrl, 'PNG', margin, currentY, sigW, sigH);
 
         doc.setDrawColor(229, 0, 18);
         doc.setLineWidth(0.3);
-        doc.line(margin, 28 + sigH + 4, pW - margin, 28 + sigH + 4);
+        doc.line(margin, currentY + sigH + 4, pW - margin, currentY + sigH + 4);
 
         doc.setFontSize(8);
         doc.setTextColor(160, 160, 160);
-        doc.text(clientName || 'Responsável', pW / 2, 28 + sigH + 10, { align: 'center' });
+        doc.text(clientName || 'Responsável', pW / 2, currentY + sigH + 10, { align: 'center' });
       }
 
       /* ---- Update footers ---- */
