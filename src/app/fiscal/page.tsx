@@ -479,11 +479,11 @@ export default function FiscalPage() {
     const canvas = signatureCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
-    canvas.width = canvas.offsetWidth * window.devicePixelRatio || 600;
-    canvas.height = 180 * window.devicePixelRatio || 180;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    // Set intrinsic size to match CSS display size so getSignaturePos scale ratio stays 1:1
+    canvas.width = canvas.offsetWidth || 600;
+    canvas.height = canvas.offsetHeight || 180;
     ctx.fillStyle = '#1A1A1A';
-    ctx.fillRect(0, 0, canvas.offsetWidth, 180);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = '#E8E8E8';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
@@ -494,6 +494,13 @@ export default function FiscalPage() {
     if (signatureEnabled && !signatureConfirmed) {
       setTimeout(initSignatureCanvas, 50);
     }
+  }, [signatureEnabled, signatureConfirmed, initSignatureCanvas]);
+
+  useEffect(() => {
+    if (!signatureEnabled || signatureConfirmed) return;
+    const handleResize = () => initSignatureCanvas();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [signatureEnabled, signatureConfirmed, initSignatureCanvas]);
 
   const onSigStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
