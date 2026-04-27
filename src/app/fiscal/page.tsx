@@ -31,99 +31,99 @@ const TECHNICIANS = [
 const CHECKLIST_ITEMS = [
   {
     id: 'c01',
-    label: 'Organização geral da rede interna',
+    label: 'Acomodação da fibra na CTO',
     tooltip:
-      'Verifique se os cabos estão organizados, amarrados e roteados adequadamente, sem cruzamentos desnecessários e com passagem segura.',
+      'Verificar se a caixa está com splitter instalado corretamente (OK) ou se está organizada com rolinho e plaqueta de identificação.',
   },
   {
     id: 'c02',
-    label: 'Identificação e etiquetagem dos cabos',
+    label: 'Identificação do DROP',
     tooltip:
-      'Todos os cabos devem estar etiquetados de forma legível com origem, destino e função, usando etiquetas padronizadas.',
+      'Verificar se o cabo do cliente está identificado com anilha numerada ou com lacre de identificação.',
   },
   {
     id: 'c03',
-    label: 'Estado de conservação do patch panel',
+    label: 'CTO correta conforme projeto',
     tooltip:
-      'Verifique o estado físico do patch panel: presença de portas com defeito, falta de espelhos de fechamento e organização das conexões.',
+      'Verificar se a caixa utilizada é a mesma registrada no sistema — ou seja, a CTO que consta na facilidade do cliente.',
   },
   {
     id: 'c04',
-    label: 'Organização e limpeza da OLT/equipamentos',
+    label: 'Identificação da CTO',
     tooltip:
-      'OLT e demais equipamentos devem estar limpos, sem poeira acumulada, com módulos SFP protegidos e ventilação desobstruída.',
+      'Verificar se o cliente está na porta correta da CTO, conforme registrado no sistema.',
   },
   {
     id: 'c05',
-    label: 'Posicionamento dos equipamentos no rack',
+    label: 'Organização interna da CTO',
     tooltip:
-      'Os equipamentos devem estar fixados corretamente no rack com parafusos e espaçadores adequados, sem folgas ou risco de queda.',
+      'Verificar se não há pontas de cabo cortado soltas dentro da caixa e se não existem conectores de cabos abandonados no interior.',
   },
   {
     id: 'c06',
-    label: 'Estado do no-break / UPS',
+    label: 'Trajeto do DROP',
     tooltip:
-      'Verifique a carga da bateria, tempo de autonomia, alarmes ativos e a data do último teste de carga. Bateria abaulada ou com vazamento indica substituição imediata.',
+      'Verificar se o cabo DROP está posicionado com cunhas altas e nos suportes dos postes ao longo de todo o trajeto.',
   },
   {
     id: 'c07',
-    label: 'Funcionamento das portas ativas',
+    label: 'Fixação em fachada',
     tooltip:
-      'Confirme que todas as portas de rede ativas estão operacionais com os LEDs de status corretos e sem erros no gerenciamento.',
+      'Verificar se a fixação na fachada está realizada com suporte DM ou com PTR (presilha tipo roldana).',
   },
   {
     id: 'c08',
-    label: 'Documentação técnica atualizada',
+    label: 'Entrada do cabo na residência',
     tooltip:
-      'Verifique se mapas de rede, diagramas de cabeamento, planilhas de IP e manuais estão atualizados e disponíveis no local.',
+      'Verificar se o cabo está completamente fixado na residência, sem pontos soltos ou mal presos.',
   },
   {
     id: 'c09',
-    label: 'Registro de senhas e acessos',
+    label: 'Instalação do PTO ou Alta Fusão',
     tooltip:
-      'Confirme que as credenciais de acesso aos equipamentos estão documentadas em cofre de senhas ou local seguro, atualizadas.',
+      'Verificar conforme o tipo de visita: se for visita de fiscalização feita diretamente ao cliente, conferir a instalação do PTO ou da alta fusão no local.',
   },
   {
     id: 'c10',
-    label: 'Controle de temperatura (climatização)',
+    label: 'Teste WiFi e IPv6',
     tooltip:
-      'Verifique o funcionamento do ar-condicionado, temperatura ambiente (ideal: 18–24 °C), umidade relativa e circulação de ar adequada.',
+      'Verificar conforme a situação: se a visita for acompanhada do técnico, realizar o teste no local; se for visita de auditoria, verificar os resultados no sistema.',
   },
   {
     id: 'c11',
-    label: 'Aterramento correto dos equipamentos',
+    label: 'Parâmetros da fibra',
     tooltip:
-      'Todos os equipamentos devem estar adequadamente aterrados. Verifique a continuidade do fio terra e resistência de aterramento.',
+      'Verificar conforme a situação: se a visita for com o técnico no local, conferir os parâmetros presencialmente; se for auditoria, verificar no sistema.',
   },
   {
     id: 'c12',
-    label: 'Condições da fibra ótica (curvas, conectores)',
+    label: 'Cliente orientado sobre WiFi',
     tooltip:
-      'Verifique a integridade dos conectores SC/UPC, ausência de curvas com raio menor que 30 mm e proteção adequada dos splices.',
+      'Verificar somente em visitas realizadas com o técnico presente: confirmar se o cliente foi devidamente orientado sobre o uso e configurações do WiFi.',
   },
   {
     id: 'c13',
-    label: 'Estado dos splitters e splitter boxes',
+    label: 'Organização geral da instalação',
     tooltip:
-      'Os splitters devem estar limpos, com conectores protegidos por tampas, devidamente identificados e fixados.',
+      'Verificar se o cabo está fixado corretamente na residência do cliente e se a caixa está organizada — sem folgas, sem excesso de cabo e sem bagunça.',
   },
   {
     id: 'c14',
-    label: 'Identificação das rotas de fibra',
+    label: 'Uso de EPI pelo técnico',
     tooltip:
-      'As rotas de fibra devem estar sinalizadas, mapeadas em planta e com identificação de cada trecho e splice box.',
+      'Verificar somente quando a visita for realizada com o técnico no local: confirmar se o técnico está utilizando os Equipamentos de Proteção Individual necessários.',
   },
   {
     id: 'c15',
-    label: 'Acesso físico seguro ao ambiente técnico',
+    label: 'Registro fotográfico',
     tooltip:
-      'Verifique controle de acesso (cadeado/biometria), registro de visitantes, câmeras operacionais e ausência de acesso não autorizado.',
+      'Verificar somente em visitas de auditoria: conferir no sistema de arquivos do cliente se as fotos estão registradas na ordem correta e completas.',
   },
   {
     id: 'c16',
-    label: 'Limpeza geral do ambiente',
+    label: 'Qualidade final da instalação',
     tooltip:
-      'O ambiente deve estar limpo, sem entulho ou materiais desnecessários, com piso livre e condições adequadas de trabalho.',
+      'Verificar se não há lixo ou resíduos na porta do cliente nem no caminho até a caixa CTO — a área deve estar limpa após a execução do serviço.',
   },
 ];
 
@@ -619,12 +619,12 @@ export default function FiscalPage() {
         doc.setTextColor(120, 120, 120);
         doc.setFont('helvetica', 'normal');
         doc.text(label.toUpperCase(), margin, cy);
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setTextColor(232, 232, 232);
         doc.setFont('helvetica', 'bold');
         const lines = doc.splitTextToSize(value, pW - margin * 2 - 30);
-        doc.text(lines, margin, cy + 6);
-        cy += 16 + (lines.length - 1) * 6;
+        doc.text(lines, margin, cy + 5);
+        cy += 12 + (lines.length - 1) * 5;
       });
 
       if (gpsCoords) {
@@ -651,7 +651,7 @@ export default function FiscalPage() {
       doc.text('01 — DADOS DA VISITA', margin, 20);
 
       autoTable(doc, {
-        startY: 24,
+        startY: 22,
         margin: { left: margin, right: margin },
         body: [
           ['Cliente', clientName || '—', 'Técnico', technicianName || '—'],
@@ -659,7 +659,7 @@ export default function FiscalPage() {
         ],
         styles: {
           fontSize: 9,
-          cellPadding: 4,
+          cellPadding: 3,
           fillColor: [26, 26, 26],
           textColor: [232, 232, 232],
           lineColor: [42, 42, 42],
@@ -674,7 +674,7 @@ export default function FiscalPage() {
         theme: 'grid',
       });
 
-      const afterVisit = (doc as any).lastAutoTable.finalY + 10;
+      const afterVisit = (doc as any).lastAutoTable.finalY + 6;
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -693,7 +693,7 @@ export default function FiscalPage() {
         body: checklistBody,
         styles: {
           fontSize: 8,
-          cellPadding: 3,
+          cellPadding: 2,
           fillColor: [17, 17, 17],
           textColor: [220, 220, 220],
           lineColor: [42, 42, 42],
@@ -725,7 +725,7 @@ export default function FiscalPage() {
         theme: 'grid',
       });
 
-      const afterChecklist = (doc as any).lastAutoTable.finalY + 8;
+      const afterChecklist = (doc as any).lastAutoTable.finalY + 5;
 
       // Score row
       doc.setFontSize(9);
@@ -742,26 +742,26 @@ export default function FiscalPage() {
       doc.setFillColor(10, 10, 10);
       doc.rect(0, 0, pW, pH, 'F');
 
-      let y = 20;
+      let y = 16;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(229, 0, 18);
       doc.text('03 — OBSERVAÇÕES', margin, y);
-      y += 6;
+      y += 5;
 
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(210, 210, 210);
       const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
       doc.text(obsLines, margin, y);
-      y += obsLines.length * 5 + 12;
+      y += obsLines.length * 4.5 + 8;
 
       if (photos.length > 0) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(229, 0, 18);
         doc.text('04 — REGISTRO FOTOGRÁFICO', margin, y);
-        y += 6;
+        y += 5;
 
         const imgW = (pW - margin * 2 - 6) / 2;
         const imgH = imgW * 0.75;
@@ -769,11 +769,11 @@ export default function FiscalPage() {
 
         for (let i = 0; i < photos.length; i++) {
           const photo = photos[i];
-          if (y + imgH + 14 > pH - 20) {
+          if (y + imgH + 10 > pH - 20) {
             doc.addPage();
             doc.setFillColor(10, 10, 10);
             doc.rect(0, 0, pW, pH, 'F');
-            y = 20;
+            y = 16;
           }
           const x = margin + col * (imgW + 6);
           try {
@@ -792,7 +792,7 @@ export default function FiscalPage() {
           col++;
           if (col === 2) {
             col = 0;
-            y += imgH + 14;
+            y += imgH + 10;
           }
         }
       }
@@ -803,12 +803,12 @@ export default function FiscalPage() {
         doc.setFillColor(10, 10, 10);
         doc.rect(0, 0, pW, pH, 'F');
 
-        let ry = 20;
+        let ry = 16;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(229, 0, 18);
         doc.text('05 — AVALIAÇÃO', margin, ry);
-        ry += 10;
+        ry += 8;
 
         const ratingGroups: [string, number][] = [
           ['Empresa', ratings.empresa],
@@ -836,7 +836,7 @@ export default function FiscalPage() {
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(229, 0, 18);
           doc.text(`${score}/10`, sx + 2, ry + 0.5);
-          ry += 12;
+          ry += 9;
         });
       }
 
@@ -849,24 +849,24 @@ export default function FiscalPage() {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(229, 0, 18);
-        doc.text('06 — ASSINATURA', margin, 20);
+        doc.text('06 — ASSINATURA', margin, 16);
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(120, 120, 120);
-        doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, 27);
+        doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, 22);
 
         const sigW = pW - margin * 2;
         const sigH = sigW * 0.3;
-        doc.addImage(signatureDataUrl, 'PNG', margin, 33, sigW, sigH);
+        doc.addImage(signatureDataUrl, 'PNG', margin, 28, sigW, sigH);
 
         doc.setDrawColor(229, 0, 18);
         doc.setLineWidth(0.3);
-        doc.line(margin, 33 + sigH + 4, pW - margin, 33 + sigH + 4);
+        doc.line(margin, 28 + sigH + 4, pW - margin, 28 + sigH + 4);
 
         doc.setFontSize(8);
         doc.setTextColor(160, 160, 160);
-        doc.text(clientName || 'Responsável', pW / 2, 33 + sigH + 10, { align: 'center' });
+        doc.text(clientName || 'Responsável', pW / 2, 28 + sigH + 10, { align: 'center' });
       }
 
       /* ---- Update footers ---- */
