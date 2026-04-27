@@ -569,7 +569,7 @@ export default function FiscalPage() {
 
   /* ======================== AZURE UPLOAD ======================== */
   const uploadPdfToServer = useCallback(
-    async (blob: Blob, filename: string) => {
+    async (blob: Blob, filename: string): Promise<void> => {
       setUploadStatus('uploading');
       try {
         const fd = new FormData();
@@ -581,12 +581,18 @@ export default function FiscalPage() {
         fd.append('score', String(pct));
 
         const res = await fetch('/api/upload-pdf', { method: 'POST', body: fd });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.success) {
+          const errMsg = json.error || `HTTP ${res.status}`;
+          throw new Error(errMsg);
+        }
         setUploadStatus('success');
-        showToast('PDF salvo no servidor!', 'success');
-      } catch {
+        showToast('PDF salvo com sucesso no servidor!', 'success');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         setUploadStatus('error');
-        showToast('Erro ao salvar no servidor', 'error');
+        showToast(`Erro ao salvar: ${message}`, 'error');
+        throw err;
       }
     },
     [clientName, technicianName, fiscalName, visitDate, pct, showToast]
@@ -594,7 +600,9 @@ export default function FiscalPage() {
 
   /* ======================== PDF GENERATION ======================== */
   const generatePDF = useCallback(async () => {
+    setUploadStatus('uploading');
     showToast('Gerando PDF...', 'info');
+    let uploadAttempted = false;
     try {
       const { default: jsPDF } = await import('jspdf');
       const { default: autoTable } = await import('jspdf-autotable');
@@ -990,27 +998,18 @@ export default function FiscalPage() {
 
       const filename = `ficha_fiscal_${clientName.replace(/\s+/g, '_') || 'silvernet'}_${visitDate}.pdf`;
 
-      if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [] })) {
-        const blob = doc.output('blob');
-        const file = new File([blob], filename, { type: 'application/pdf' });
-        // Upload in parallel — do not block share/download
-        uploadPdfToServer(blob, filename);
-        try {
-          await navigator.share({ title: 'Ficha Fiscal Técnica', files: [file] });
-          showToast('PDF compartilhado!', 'success');
-          return;
-        } catch {
-          // fall through to download
-        }
-      }
-
       const blob = doc.output('blob');
-      uploadPdfToServer(blob, filename);
-      doc.save(filename);
-      showToast('PDF gerado e baixado!', 'success');
+      showToast('Enviando para o servidor...', 'info');
+      uploadAttempted = true;
+      await uploadPdfToServer(blob, filename);
     } catch (err) {
       console.error(err);
-      showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+      // uploadPdfToServer already shows the error toast and sets status to 'error'
+      // Only show generic error toast if the failure happened during PDF generation
+      if (!uploadAttempted) {
+        showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+        setUploadStatus('error');
+      }
     }
   }, [
     clientName, technicianName, fiscalName, visitDate,
@@ -1471,15 +1470,17 @@ export default function FiscalPage() {
 
       {/* ==================== Generate PDF ==================== */}
       <div className={styles.pdfSection}>
-        <button className={styles.btnPdf} type="button" onClick={generatePDF}>
-          <i className="fa-solid fa-file-pdf" />
-          Gerar Relatório PDF
+        <button
+          className={styles.btnPdf}
+          type="button"
+          onClick={generatePDF}
+          disabled={uploadStatus === 'uploading'}
+        >
+          <i className={`fa-solid ${uploadStatus === 'uploading' ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'}`} />
+          {uploadStatus === 'uploading' ? 'Processando...' : 'Gerar & Salvar PDF'}
         </button>
-        {uploadStatus !== 'idle' && (
+        {uploadStatus !== 'idle' && uploadStatus !== 'uploading' && (
           <span className={`${styles.uploadIndicator} ${styles[`upload_${uploadStatus}`]}`}>
-            {uploadStatus === 'uploading' && (
-              <><i className="fa-solid fa-spinner fa-spin" /> Salvando...</>
-            )}
             {uploadStatus === 'success' && (
               <><i className="fa-solid fa-cloud-arrow-up" /> Salvo</>
             )}
