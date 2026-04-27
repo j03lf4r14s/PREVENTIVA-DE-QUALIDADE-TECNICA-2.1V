@@ -1,0 +1,1424 @@
+'use client';
+
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
+import styles from './fiscal.module.css';
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const MAX_PHOTOS = 30;
+const MAX_CHARS = 3000;
+
+const TECHNICIANS = [
+  'Anderson Silva',
+  'Bruno Oliveira',
+  'Carlos Santos',
+  'Diego Ferreira',
+  'Eduardo Costa',
+  'Felipe Alves',
+  'Gabriel Lima',
+  'Henrique Souza',
+  'Igor Martins',
+  'João Paulo',
+  'Lucas Rodrigues',
+];
+
+const CHECKLIST_ITEMS = [
+  {
+    id: 'c01',
+    label: 'Organização geral da rede interna',
+    tooltip:
+      'Verifique se os cabos estão organizados, amarrados e roteados adequadamente, sem cruzamentos desnecessários e com passagem segura.',
+  },
+  {
+    id: 'c02',
+    label: 'Identificação e etiquetagem dos cabos',
+    tooltip:
+      'Todos os cabos devem estar etiquetados de forma legível com origem, destino e função, usando etiquetas padronizadas.',
+  },
+  {
+    id: 'c03',
+    label: 'Estado de conservação do patch panel',
+    tooltip:
+      'Verifique o estado físico do patch panel: presença de portas com defeito, falta de espelhos de fechamento e organização das conexões.',
+  },
+  {
+    id: 'c04',
+    label: 'Organização e limpeza da OLT/equipamentos',
+    tooltip:
+      'OLT e demais equipamentos devem estar limpos, sem poeira acumulada, com módulos SFP protegidos e ventilação desobstruída.',
+  },
+  {
+    id: 'c05',
+    label: 'Posicionamento dos equipamentos no rack',
+    tooltip:
+      'Os equipamentos devem estar fixados corretamente no rack com parafusos e espaçadores adequados, sem folgas ou risco de queda.',
+  },
+  {
+    id: 'c06',
+    label: 'Estado do no-break / UPS',
+    tooltip:
+      'Verifique a carga da bateria, tempo de autonomia, alarmes ativos e a data do último teste de carga. Bateria abaulada ou com vazamento indica substituição imediata.',
+  },
+  {
+    id: 'c07',
+    label: 'Funcionamento das portas ativas',
+    tooltip:
+      'Confirme que todas as portas de rede ativas estão operacionais com os LEDs de status corretos e sem erros no gerenciamento.',
+  },
+  {
+    id: 'c08',
+    label: 'Documentação técnica atualizada',
+    tooltip:
+      'Verifique se mapas de rede, diagramas de cabeamento, planilhas de IP e manuais estão atualizados e disponíveis no local.',
+  },
+  {
+    id: 'c09',
+    label: 'Registro de senhas e acessos',
+    tooltip:
+      'Confirme que as credenciais de acesso aos equipamentos estão documentadas em cofre de senhas ou local seguro, atualizadas.',
+  },
+  {
+    id: 'c10',
+    label: 'Controle de temperatura (climatização)',
+    tooltip:
+      'Verifique o funcionamento do ar-condicionado, temperatura ambiente (ideal: 18–24 °C), umidade relativa e circulação de ar adequada.',
+  },
+  {
+    id: 'c11',
+    label: 'Aterramento correto dos equipamentos',
+    tooltip:
+      'Todos os equipamentos devem estar adequadamente aterrados. Verifique a continuidade do fio terra e resistência de aterramento.',
+  },
+  {
+    id: 'c12',
+    label: 'Condições da fibra ótica (curvas, conectores)',
+    tooltip:
+      'Verifique a integridade dos conectores SC/UPC, ausência de curvas com raio menor que 30 mm e proteção adequada dos splices.',
+  },
+  {
+    id: 'c13',
+    label: 'Estado dos splitters e splitter boxes',
+    tooltip:
+      'Os splitters devem estar limpos, com conectores protegidos por tampas, devidamente identificados e fixados.',
+  },
+  {
+    id: 'c14',
+    label: 'Identificação das rotas de fibra',
+    tooltip:
+      'As rotas de fibra devem estar sinalizadas, mapeadas em planta e com identificação de cada trecho e splice box.',
+  },
+  {
+    id: 'c15',
+    label: 'Acesso físico seguro ao ambiente técnico',
+    tooltip:
+      'Verifique controle de acesso (cadeado/biometria), registro de visitantes, câmeras operacionais e ausência de acesso não autorizado.',
+  },
+  {
+    id: 'c16',
+    label: 'Limpeza geral do ambiente',
+    tooltip:
+      'O ambiente deve estar limpo, sem entulho ou materiais desnecessários, com piso livre e condições adequadas de trabalho.',
+  },
+];
+
+/* ============================================================
+   TYPES
+   ============================================================ */
+type ChecklistValue = 'Sim' | 'Não' | 'N/A' | null;
+
+interface PhotoItem {
+  id: string;
+  dataUrl: string;
+  timestamp: string;
+  address: string;
+  fromCamera: boolean;
+}
+
+interface ToastState {
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
+interface TooltipState {
+  text: string;
+  x: number;
+  y: number;
+}
+
+interface Ratings {
+  empresa: number;
+  suporte: number;
+  tecnico: number;
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function formatDate(d: Date): string {
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+async function addPhotoOverlay(
+  dataUrl: string,
+  timestamp: string,
+  address: string
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      const barH = Math.max(56, img.height * 0.09);
+      ctx.fillStyle = 'rgba(0,0,0,0.68)';
+      ctx.fillRect(0, img.height - barH, img.width, barH);
+
+      const fs = Math.max(14, Math.round(img.width * 0.026));
+      ctx.font = `bold ${fs}px monospace`;
+      ctx.fillStyle = '#E50012';
+      ctx.fillText(timestamp, 12, img.height - barH + fs + 6);
+
+      ctx.font = `${Math.round(fs * 0.82)}px monospace`;
+      ctx.fillStyle = '#FFFFFF';
+      const addr = address.length > 70 ? address.substring(0, 67) + '...' : address;
+      ctx.fillText(addr, 12, img.height - barH + fs * 2 + 10);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.86));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target!.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   MAIN COMPONENT
+   ============================================================ */
+export default function FiscalPage() {
+  /* ----- visit data ----- */
+  const [clientName, setClientName] = useState('');
+  const [technicianName, setTechnicianName] = useState('');
+  const [fiscalName, setFiscalName] = useState('');
+  const [visitDate, setVisitDate] = useState(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  });
+
+  /* ----- GPS ----- */
+  const [gpsAddress, setGpsAddress] = useState('Clique para obter localização');
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  /* ----- checklist ----- */
+  const initialChecklist = () => {
+    const obj: Record<string, ChecklistValue> = {};
+    CHECKLIST_ITEMS.forEach((item) => (obj[item.id] = null));
+    return obj;
+  };
+  const [checklist, setChecklist] = useState<Record<string, ChecklistValue>>(initialChecklist);
+
+  /* ----- observations ----- */
+  const [observations, setObservations] = useState('');
+
+  /* ----- photos ----- */
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+
+  /* ----- ratings ----- */
+  const [ratingEnabled, setRatingEnabled] = useState(false);
+  const [ratings, setRatings] = useState<Ratings>({ empresa: 0, suporte: 0, tecnico: 0 });
+  const [hoverRating, setHoverRating] = useState<Ratings>({ empresa: 0, suporte: 0, tecnico: 0 });
+
+  /* ----- signature ----- */
+  const [signatureEnabled, setSignatureEnabled] = useState(false);
+  const [signatureConfirmed, setSignatureConfirmed] = useState(false);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+
+  /* ----- UI states ----- */
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  /* ----- refs ----- */
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const techListId = 'technicians-list';
+
+  /* ----- dirty tracking ----- */
+  useEffect(() => {
+    if (clientName || technicianName || fiscalName || observations || photos.length) {
+      setIsDirty(true);
+    }
+  }, [clientName, technicianName, fiscalName, observations, photos.length]);
+
+  /* ----- beforeunload ----- */
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  /* ======================== TOAST ======================== */
+  const showToast = useCallback((message: string, type: ToastState['type'] = 'info') => {
+    setToast({ message, type });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  /* ======================== GPS ======================== */
+  const fetchGPS = useCallback(async () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocalização não suportada neste dispositivo.', 'error');
+      return;
+    }
+    setGpsLoading(true);
+    setGpsAddress('Obtendo localização...');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setGpsCoords({ lat, lng });
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+            { headers: { 'Accept-Language': 'pt-BR' } }
+          );
+          const data = await res.json();
+          const addr =
+            data.display_name ||
+            `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setGpsAddress(addr);
+          showToast('Localização obtida com sucesso!', 'success');
+        } catch {
+          setGpsAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        }
+        setGpsLoading(false);
+      },
+      () => {
+        setGpsAddress('Não foi possível obter a localização');
+        setGpsLoading(false);
+        showToast('Erro ao acessar GPS. Verifique as permissões.', 'error');
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  }, [showToast]);
+
+  /* ======================== CHECKLIST ======================== */
+  const setChecklistValue = (id: string, value: ChecklistValue) => {
+    setChecklist((prev) => ({ ...prev, [id]: value }));
+    setIsDirty(true);
+  };
+
+  const computeScore = () => {
+    let sim = 0, nao = 0, na = 0;
+    Object.values(checklist).forEach((v) => {
+      if (v === 'Sim') sim++;
+      else if (v === 'Não') nao++;
+      else if (v === 'N/A') na++;
+    });
+    const applicable = sim + nao;
+    const pct = applicable > 0 ? Math.round((sim / applicable) * 100) : 0;
+    const level = pct >= 80 ? 'high' : pct >= 60 ? 'mid' : 'low';
+    return { sim, nao, na, pct, level };
+  };
+
+  const { sim, nao, na, pct, level } = computeScore();
+
+  /* ======================== PHOTOS ======================== */
+  const handleCameraCapture = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const remaining = MAX_PHOTOS - photos.length;
+      if (remaining <= 0) {
+        showToast(`Limite de ${MAX_PHOTOS} fotos atingido.`, 'error');
+        return;
+      }
+      const toProcess = files.slice(0, remaining);
+      const timestamp = formatDate(new Date());
+      const address = gpsAddress.startsWith('Clique') ? 'Sem localização' : gpsAddress;
+
+      const newPhotos: PhotoItem[] = [];
+      for (const file of toProcess) {
+        const raw = await readFileAsDataUrl(file);
+        const withOverlay = await addPhotoOverlay(raw, timestamp, address);
+        newPhotos.push({
+          id: `cam_${Date.now()}_${Math.random()}`,
+          dataUrl: withOverlay,
+          timestamp,
+          address,
+          fromCamera: true,
+        });
+      }
+      setPhotos((prev) => [...prev, ...newPhotos]);
+      setIsDirty(true);
+      showToast(`${newPhotos.length} foto(s) adicionada(s) com overlay.`, 'success');
+      e.target.value = '';
+    },
+    [photos.length, gpsAddress, showToast]
+  );
+
+  const handleGalleryUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const remaining = MAX_PHOTOS - photos.length;
+      if (remaining <= 0) {
+        showToast(`Limite de ${MAX_PHOTOS} fotos atingido.`, 'error');
+        return;
+      }
+      const toProcess = files.slice(0, remaining);
+
+      const newPhotos: PhotoItem[] = [];
+      for (const file of toProcess) {
+        const dataUrl = await readFileAsDataUrl(file);
+        newPhotos.push({
+          id: `gal_${Date.now()}_${Math.random()}`,
+          dataUrl,
+          timestamp: formatDate(new Date()),
+          address: '',
+          fromCamera: false,
+        });
+      }
+      setPhotos((prev) => [...prev, ...newPhotos]);
+      setIsDirty(true);
+      showToast(`${newPhotos.length} foto(s) carregada(s).`, 'success');
+      e.target.value = '';
+    },
+    [photos.length, showToast]
+  );
+
+  const deletePhoto = useCallback(
+    (id: string) => {
+      setPhotos((prev) => prev.filter((p) => p.id !== id));
+      if (lightboxIndex !== null) setLightboxIndex(null);
+      showToast('Foto removida.', 'info');
+    },
+    [lightboxIndex, showToast]
+  );
+
+  const downloadSinglePhotoPdf = useCallback(
+    async (photo: PhotoItem) => {
+      const { default: jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(3, 3, 3);
+      doc.rect(0, 0, pageW, pageH, 'F');
+      doc.setFontSize(10);
+      doc.setTextColor(200, 200, 200);
+      doc.text('SilverNet Tecnologia — Ficha Fiscal Técnica', pageW / 2, 12, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Foto capturada em: ${photo.timestamp}`, pageW / 2, 18, { align: 'center' });
+      if (photo.address) {
+        const lines = doc.splitTextToSize(`Local: ${photo.address}`, pageW - 30);
+        doc.text(lines, pageW / 2, 23, { align: 'center' });
+      }
+
+      const imgY = 30;
+      const maxImgH = pageH - imgY - 20;
+      const imgW = pageW - 20;
+      doc.addImage(photo.dataUrl, 'JPEG', 10, imgY, imgW, maxImgH, undefined, 'FAST');
+      doc.save(`foto_${photo.id.substring(0, 12)}.pdf`);
+      showToast('PDF da foto gerado!', 'success');
+    },
+    [showToast]
+  );
+
+  /* ======================== SIGNATURE ======================== */
+  const getSignaturePos = (
+    e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent,
+    canvas: HTMLCanvasElement
+  ) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src = 'touches' in e && e.touches.length > 0 ? e.touches[0] : (e as MouseEvent);
+    return {
+      x: (src.clientX - rect.left) * scaleX,
+      y: (src.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const initSignatureCanvas = useCallback(() => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    canvas.width = canvas.offsetWidth * window.devicePixelRatio || 600;
+    canvas.height = 180 * window.devicePixelRatio || 180;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    ctx.fillStyle = '#1A1A1A';
+    ctx.fillRect(0, 0, canvas.offsetWidth, 180);
+    ctx.strokeStyle = '#E8E8E8';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, []);
+
+  useEffect(() => {
+    if (signatureEnabled && !signatureConfirmed) {
+      setTimeout(initSignatureCanvas, 50);
+    }
+  }, [signatureEnabled, signatureConfirmed, initSignatureCanvas]);
+
+  const onSigStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (signatureConfirmed) return;
+    e.preventDefault();
+    const canvas = signatureCanvasRef.current!;
+    isDrawingRef.current = true;
+    lastPosRef.current = getSignaturePos(e.nativeEvent, canvas);
+  };
+
+  const onSigMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current || signatureConfirmed) return;
+    e.preventDefault();
+    const canvas = signatureCanvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
+    const pos = getSignaturePos(e.nativeEvent, canvas);
+    ctx.beginPath();
+    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastPosRef.current = pos;
+  };
+
+  const onSigEnd = () => {
+    isDrawingRef.current = false;
+  };
+
+  const clearSignature = () => {
+    setSignatureConfirmed(false);
+    setSignatureDataUrl(null);
+    setTimeout(initSignatureCanvas, 20);
+  };
+
+  const confirmSignature = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setSignatureDataUrl(dataUrl);
+    setSignatureConfirmed(true);
+    showToast('Assinatura confirmada!', 'success');
+  };
+
+  /* ======================== TOOLTIP ======================== */
+  const showTooltip = (e: React.MouseEvent, text: string) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    let x = rect.left + rect.width / 2;
+    let y = rect.top - 8;
+    if (x > window.innerWidth - 140) x = window.innerWidth - 150;
+    if (x < 10) x = 10;
+    setTooltip({ text, x, y });
+  };
+
+  const hideTooltip = () => setTooltip(null);
+
+  /* ======================== PDF GENERATION ======================== */
+  const generatePDF = useCallback(async () => {
+    showToast('Gerando PDF...', 'info');
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pW = doc.internal.pageSize.getWidth();
+      const pH = doc.internal.pageSize.getHeight();
+      const margin = 14;
+
+      const addFooter = (pageNum: number, totalPages: number) => {
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        doc.text(
+          `SilverNet Tecnologia | Ficha Fiscal Técnica | Pág. ${pageNum}/${totalPages}`,
+          pW / 2,
+          pH - 6,
+          { align: 'center' }
+        );
+        doc.setDrawColor(229, 0, 18);
+        doc.setLineWidth(0.3);
+        doc.line(margin, pH - 10, pW - margin, pH - 10);
+      };
+
+      /* ---- PAGE 1: Cover ---- */
+      doc.setFillColor(3, 3, 3);
+      doc.rect(0, 0, pW, pH, 'F');
+
+      doc.setFillColor(229, 0, 18);
+      doc.rect(0, 0, pW, 3, 'F');
+
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(232, 232, 232);
+      doc.text('SILVERNET', pW / 2, 40, { align: 'center' });
+      doc.setTextColor(229, 0, 18);
+      doc.text('TECNOLOGIA', pW / 2, 52, { align: 'center' });
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text('FICHA FISCAL TÉCNICA', pW / 2, 63, { align: 'center' });
+
+      doc.setDrawColor(229, 0, 18);
+      doc.setLineWidth(0.5);
+      doc.line(margin + 20, 68, pW - margin - 20, 68);
+
+      const coverItems = [
+        ['Cliente', clientName || '—'],
+        ['Técnico', technicianName || '—'],
+        ['Fiscal', fiscalName || '—'],
+        ['Data', visitDate || '—'],
+        ['Localização', gpsAddress],
+        ['Conformidade', `${pct}%`],
+      ];
+
+      let cy = 80;
+      coverItems.forEach(([label, value]) => {
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.setFont('helvetica', 'normal');
+        doc.text(label.toUpperCase(), margin, cy);
+        doc.setFontSize(11);
+        doc.setTextColor(232, 232, 232);
+        doc.setFont('helvetica', 'bold');
+        const lines = doc.splitTextToSize(value, pW - margin * 2 - 30);
+        doc.text(lines, margin, cy + 6);
+        cy += 16 + (lines.length - 1) * 6;
+      });
+
+      if (gpsCoords) {
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+        doc.text(
+          `GPS: ${gpsCoords.lat.toFixed(6)}, ${gpsCoords.lng.toFixed(6)}`,
+          margin,
+          cy + 2
+        );
+      }
+
+      addFooter(1, 1); // updated after all pages added
+
+      /* ---- PAGE 2: Visit Data + Checklist ---- */
+      doc.addPage();
+      doc.setFillColor(10, 10, 10);
+      doc.rect(0, 0, pW, pH, 'F');
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(229, 0, 18);
+      doc.text('01 — DADOS DA VISITA', margin, 20);
+
+      autoTable(doc, {
+        startY: 24,
+        margin: { left: margin, right: margin },
+        body: [
+          ['Cliente', clientName || '—', 'Técnico', technicianName || '—'],
+          ['Fiscal', fiscalName || '—', 'Data', visitDate || '—'],
+        ],
+        styles: {
+          fontSize: 9,
+          cellPadding: 4,
+          fillColor: [26, 26, 26],
+          textColor: [232, 232, 232],
+          lineColor: [42, 42, 42],
+          lineWidth: 0.2,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25 },
+          1: { cellWidth: 60 },
+          2: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25 },
+          3: { cellWidth: 60 },
+        },
+        theme: 'grid',
+      });
+
+      const afterVisit = (doc as any).lastAutoTable.finalY + 10;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(229, 0, 18);
+      doc.text('02 — CHECKLIST DE CONFORMIDADE', margin, afterVisit);
+
+      const checklistBody = CHECKLIST_ITEMS.map((item, i) => {
+        const val = checklist[item.id] ?? '—';
+        return [`${String(i + 1).padStart(2, '0')}`, item.label, val];
+      });
+
+      autoTable(doc, {
+        startY: afterVisit + 4,
+        margin: { left: margin, right: margin },
+        head: [['#', 'Item', 'Resultado']],
+        body: checklistBody,
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          fillColor: [17, 17, 17],
+          textColor: [220, 220, 220],
+          lineColor: [42, 42, 42],
+          lineWidth: 0.2,
+        },
+        headStyles: {
+          fillColor: [229, 0, 18],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 20, halign: 'center' },
+        },
+        didParseCell: (data) => {
+          if (data.column.index === 2 && data.section === 'body') {
+            if (data.cell.raw === 'Sim') {
+              data.cell.styles.textColor = [0, 200, 83];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.cell.raw === 'Não') {
+              data.cell.styles.textColor = [229, 0, 18];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.cell.raw === 'N/A') {
+              data.cell.styles.textColor = [100, 100, 100];
+            }
+          }
+        },
+        theme: 'grid',
+      });
+
+      const afterChecklist = (doc as any).lastAutoTable.finalY + 8;
+
+      // Score row
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(140, 140, 140);
+      doc.text(
+        `Conformidade: ${pct}%   |   Sim: ${sim}   Não: ${nao}   N/A: ${na}`,
+        margin,
+        afterChecklist
+      );
+
+      /* ---- PAGE 3: Observations + Photos ---- */
+      doc.addPage();
+      doc.setFillColor(10, 10, 10);
+      doc.rect(0, 0, pW, pH, 'F');
+
+      let y = 20;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(229, 0, 18);
+      doc.text('03 — OBSERVAÇÕES', margin, y);
+      y += 6;
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(210, 210, 210);
+      const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
+      doc.text(obsLines, margin, y);
+      y += obsLines.length * 5 + 12;
+
+      if (photos.length > 0) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(229, 0, 18);
+        doc.text('04 — REGISTRO FOTOGRÁFICO', margin, y);
+        y += 6;
+
+        const imgW = (pW - margin * 2 - 6) / 2;
+        const imgH = imgW * 0.75;
+        let col = 0;
+
+        for (let i = 0; i < photos.length; i++) {
+          const photo = photos[i];
+          if (y + imgH + 14 > pH - 20) {
+            doc.addPage();
+            doc.setFillColor(10, 10, 10);
+            doc.rect(0, 0, pW, pH, 'F');
+            y = 20;
+          }
+          const x = margin + col * (imgW + 6);
+          try {
+            doc.addImage(photo.dataUrl, 'JPEG', x, y, imgW, imgH, undefined, 'FAST');
+          } catch {
+            doc.setFillColor(26, 26, 26);
+            doc.rect(x, y, imgW, imgH, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Imagem não disponível', x + imgW / 2, y + imgH / 2, { align: 'center' });
+          }
+          doc.setFontSize(6.5);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Foto ${i + 1}${photo.fromCamera ? ' 📷' : ''}`, x, y + imgH + 3.5);
+
+          col++;
+          if (col === 2) {
+            col = 0;
+            y += imgH + 14;
+          }
+        }
+      }
+
+      /* ---- PAGE N-1: Ratings ---- */
+      if (ratingEnabled) {
+        doc.addPage();
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, pW, pH, 'F');
+
+        let ry = 20;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(229, 0, 18);
+        doc.text('05 — AVALIAÇÃO', margin, ry);
+        ry += 10;
+
+        const ratingGroups: [string, number][] = [
+          ['Empresa', ratings.empresa],
+          ['Suporte', ratings.suporte],
+          ['Técnico', ratings.tecnico],
+        ];
+
+        ratingGroups.forEach(([label, score]) => {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(180, 180, 180);
+          doc.text(label, margin, ry);
+
+          const starSize = 5;
+          const starGap = 1;
+          let sx = margin + 35;
+          for (let s = 1; s <= 10; s++) {
+            doc.setFontSize(10);
+            doc.setTextColor(s <= score ? 255 : 50, s <= score ? 214 : 50, s <= score ? 0 : 50);
+            doc.text('★', sx, ry + 0.5);
+            sx += starSize + starGap;
+          }
+
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(229, 0, 18);
+          doc.text(`${score}/10`, sx + 2, ry + 0.5);
+          ry += 12;
+        });
+      }
+
+      /* ---- PAGE LAST: Signature ---- */
+      if (signatureDataUrl) {
+        doc.addPage();
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, pW, pH, 'F');
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(229, 0, 18);
+        doc.text('06 — ASSINATURA', margin, 20);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, 27);
+
+        const sigW = pW - margin * 2;
+        const sigH = sigW * 0.3;
+        doc.addImage(signatureDataUrl, 'PNG', margin, 33, sigW, sigH);
+
+        doc.setDrawColor(229, 0, 18);
+        doc.setLineWidth(0.3);
+        doc.line(margin, 33 + sigH + 4, pW - margin, 33 + sigH + 4);
+
+        doc.setFontSize(8);
+        doc.setTextColor(160, 160, 160);
+        doc.text(clientName || 'Responsável', pW / 2, 33 + sigH + 10, { align: 'center' });
+      }
+
+      /* ---- Update footers ---- */
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        addFooter(p, totalPages);
+      }
+
+      const filename = `ficha_fiscal_${clientName.replace(/\s+/g, '_') || 'silvernet'}_${visitDate}.pdf`;
+
+      if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [] })) {
+        const blob = doc.output('blob');
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        try {
+          await navigator.share({ title: 'Ficha Fiscal Técnica', files: [file] });
+          showToast('PDF compartilhado!', 'success');
+          return;
+        } catch {
+          // fall through to download
+        }
+      }
+
+      doc.save(filename);
+      showToast('PDF gerado e baixado!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+    }
+  }, [
+    clientName, technicianName, fiscalName, visitDate,
+    gpsAddress, gpsCoords, checklist, observations, photos,
+    ratingEnabled, ratings, signatureDataUrl,
+    pct, sim, nao, na, showToast,
+  ]);
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+  return (
+    <div className={styles.container}>
+      {/* ---------- GPS Bar ---------- */}
+      <div className={styles.gpsBar} onClick={fetchGPS} title="Clique para obter localização GPS">
+        <i
+          className={`fa-solid ${gpsLoading ? 'fa-spinner' : 'fa-location-dot'} ${styles.gpsIcon} ${gpsLoading ? styles.loading : ''}`}
+        />
+        {!gpsLoading && <span className={styles.gpsPulse} />}
+        <span className={styles.gpsText}>{gpsAddress}</span>
+        {gpsCoords && (
+          <span className={styles.gpsCoords}>
+            {gpsCoords.lat.toFixed(4)}, {gpsCoords.lng.toFixed(4)}
+          </span>
+        )}
+      </div>
+
+      {/* ---------- Page Header ---------- */}
+      <div className={styles.pageHeader}>
+        <div className={styles.logoRow}>
+          <span className={styles.logoText}>
+            SILVER<span className={styles.logoAccent}>NET</span>
+          </span>
+          <span className={styles.logoSub}>Tecnologia</span>
+        </div>
+        <div className={styles.docTitle}>Ficha Fiscal Técnica</div>
+      </div>
+
+      {/* ==================== SECTION 01: Visit Data ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>01/06</span>
+          <span className={styles.sectionTitle}>Dados da Visita</span>
+          <i className={`fa-solid fa-id-card ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          <div className={styles.formGrid}>
+            <div className={`${styles.formGroup} ${styles.wide}`}>
+              <label className={styles.formLabel}>Nome do Cliente</label>
+              <input
+                className={styles.formInput}
+                type="text"
+                placeholder="Nome do cliente ou empresa"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Técnico Responsável</label>
+              <input
+                className={styles.formInput}
+                type="text"
+                list={techListId}
+                placeholder="Nome do técnico"
+                value={technicianName}
+                onChange={(e) => setTechnicianName(e.target.value)}
+              />
+              <datalist id={techListId}>
+                {TECHNICIANS.map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Fiscal / Inspetor</label>
+              <input
+                className={styles.formInput}
+                type="text"
+                placeholder="Nome do fiscal"
+                value={fiscalName}
+                onChange={(e) => setFiscalName(e.target.value)}
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Data da Visita</label>
+              <input
+                className={styles.formInput}
+                type="date"
+                value={visitDate}
+                onChange={(e) => setVisitDate(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== SECTION 02: Checklist ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>02/06</span>
+          <span className={styles.sectionTitle}>Checklist de Conformidade</span>
+          <i className={`fa-solid fa-list-check ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          <div className={styles.checklistItems}>
+            {CHECKLIST_ITEMS.map((item, idx) => {
+              const val = checklist[item.id];
+              let statusClass = '';
+              if (val === 'Sim') statusClass = styles.conforming;
+              else if (val === 'Não') statusClass = styles.nonConforming;
+              else if (val === 'N/A') statusClass = styles.notApplicable;
+
+              return (
+                <div key={item.id} className={`${styles.checklistItem} ${statusClass}`}>
+                  <span className={styles.checklistNum}>{String(idx + 1).padStart(2, '0')}</span>
+                  <span className={styles.checklistLabel}>{item.label}</span>
+                  <button
+                    className={styles.checklistTooltipBtn}
+                    onMouseEnter={(e) => showTooltip(e, item.tooltip)}
+                    onMouseLeave={hideTooltip}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      showTooltip(e, item.tooltip);
+                      setTimeout(hideTooltip, 3000);
+                    }}
+                    aria-label="Info"
+                    type="button"
+                  >
+                    <i className="fa-solid fa-circle-info" />
+                  </button>
+                  <div className={styles.checklistBtns}>
+                    {(['Sim', 'Não', 'N/A'] as ChecklistValue[]).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`${styles.btn} ${
+                          val === v
+                            ? v === 'Sim'
+                              ? styles.simActive
+                              : v === 'Não'
+                              ? styles.naoActive
+                              : styles.naActive
+                            : ''
+                        }`}
+                        onClick={() => setChecklistValue(item.id, val === v ? null : v)}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Conformity Score */}
+          <div className={styles.scoreWrapper}>
+            <div className={styles.scoreRow}>
+              <span className={styles.scoreLabel}>Índice de Conformidade</span>
+              <span className={`${styles.scoreValue} ${styles[level]}`}>{pct}%</span>
+            </div>
+            <div className={styles.scoreBar}>
+              <div
+                className={`${styles.scoreBarFill} ${styles[level]}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className={styles.scorePills}>
+              <span className={`${styles.pill} ${styles.sim}`}>✓ Sim: {sim}</span>
+              <span className={`${styles.pill} ${styles.nao}`}>✗ Não: {nao}</span>
+              <span className={`${styles.pill} ${styles.na}`}>N/A: {na}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== SECTION 03: Observations ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>03/06</span>
+          <span className={styles.sectionTitle}>Observações</span>
+          <i className={`fa-solid fa-pen-to-square ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          <textarea
+            className={styles.obsTextarea}
+            placeholder="Registre aqui observações, anomalias, recomendações ou detalhes técnicos da visita..."
+            maxLength={MAX_CHARS}
+            value={observations}
+            onChange={(e) => setObservations(e.target.value)}
+            rows={5}
+          />
+          <div
+            className={`${styles.charCounter} ${
+              observations.length >= MAX_CHARS
+                ? styles.limit
+                : observations.length >= MAX_CHARS * 0.85
+                ? styles.warn
+                : ''
+            }`}
+          >
+            {observations.length} / {MAX_CHARS}
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== SECTION 04: Photos ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>04/06</span>
+          <span className={styles.sectionTitle}>Registro Fotográfico</span>
+          <i className={`fa-solid fa-camera ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          <div className={styles.photoActions}>
+            <button
+              className={styles.photoBtnPrimary}
+              type="button"
+              disabled={photos.length >= MAX_PHOTOS}
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              <i className="fa-solid fa-camera" />
+              Capturar Foto
+            </button>
+            <button
+              className={styles.photoBtnSecondary}
+              type="button"
+              disabled={photos.length >= MAX_PHOTOS}
+              onClick={() => galleryInputRef.current?.click()}
+            >
+              <i className="fa-solid fa-images" />
+              Galeria
+            </button>
+            <span className={styles.photoCount}>
+              {photos.length} / {MAX_PHOTOS}
+            </span>
+          </div>
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleCameraCapture}
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleGalleryUpload}
+          />
+
+          {photos.length === 0 ? (
+            <div className={styles.emptyPhotos}>
+              <i className="fa-regular fa-image" style={{ fontSize: 28, display: 'block', marginBottom: 8 }} />
+              Nenhuma foto adicionada. Capture ou importe da galeria.
+            </div>
+          ) : (
+            <div className={styles.photoGrid}>
+              {photos.map((photo, idx) => (
+                <div
+                  key={photo.id}
+                  className={styles.photoThumb}
+                  onClick={() => setLightboxIndex(idx)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.dataUrl} alt={`Foto ${idx + 1}`} />
+                  {photo.fromCamera && (
+                    <span className={styles.photoCameraTag}>
+                      <i className="fa-solid fa-camera" /> CAM
+                    </span>
+                  )}
+                  <div className={styles.photoOverlay} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className={styles.photoOverlayBtn}
+                      type="button"
+                      title="Visualizar"
+                      onClick={() => setLightboxIndex(idx)}
+                    >
+                      <i className="fa-solid fa-magnifying-glass" />
+                    </button>
+                    <button
+                      className={styles.photoOverlayBtn}
+                      type="button"
+                      title="Download PDF"
+                      onClick={() => downloadSinglePhotoPdf(photo)}
+                    >
+                      <i className="fa-solid fa-file-pdf" />
+                    </button>
+                    <button
+                      className={styles.photoOverlayBtn}
+                      type="button"
+                      title="Excluir"
+                      onClick={() => deletePhoto(photo.id)}
+                    >
+                      <i className="fa-solid fa-trash" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ==================== SECTION 05: Ratings ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>05/06</span>
+          <span className={styles.sectionTitle}>Avaliação</span>
+          <i className={`fa-solid fa-star ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          {!ratingEnabled ? (
+            <div className={styles.ratingActivate}>
+              <p>A avaliação é opcional. Ative para registrar a pontuação de desempenho.</p>
+              <button
+                className={styles.btnActivate}
+                type="button"
+                onClick={() => setRatingEnabled(true)}
+              >
+                <i className="fa-solid fa-star" />
+                Ativar Avaliação
+              </button>
+            </div>
+          ) : (
+            <div className={styles.ratingGroups}>
+              {(
+                [
+                  { key: 'empresa', label: 'Empresa' },
+                  { key: 'suporte', label: 'Suporte' },
+                  { key: 'tecnico', label: 'Técnico' },
+                ] as { key: keyof Ratings; label: string }[]
+              ).map(({ key, label }) => (
+                <div key={key} className={styles.ratingGroup}>
+                  <div className={styles.ratingGroupTitle}>{label}</div>
+                  <div className={styles.stars}>
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((star) => (
+                      <span
+                        key={star}
+                        className={`${styles.star} ${
+                          star <= (hoverRating[key] || ratings[key]) ? styles.filled : ''
+                        } ${hoverRating[key] > 0 && star <= hoverRating[key] ? styles.hover : ''}`}
+                        onMouseEnter={() =>
+                          setHoverRating((prev) => ({ ...prev, [key]: star }))
+                        }
+                        onMouseLeave={() =>
+                          setHoverRating((prev) => ({ ...prev, [key]: 0 }))
+                        }
+                        onClick={() => {
+                          setRatings((prev) => ({ ...prev, [key]: star }));
+                          setIsDirty(true);
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${star} estrelas`}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setRatings((prev) => ({ ...prev, [key]: star }));
+                          }
+                        }}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.ratingVal}>
+                    {ratings[key] > 0 ? (
+                      <>
+                        Nota: <span>{ratings[key]}</span>/10
+                      </>
+                    ) : (
+                      'Sem avaliação'
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ==================== SECTION 06: Signature ==================== */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionBadge}>06/06</span>
+          <span className={styles.sectionTitle}>Assinatura Digital</span>
+          <i className={`fa-solid fa-signature ${styles.sectionIcon}`} />
+        </div>
+        <div className={styles.sectionBody}>
+          {!ratingEnabled ? (
+            <div className={styles.signatureActivate}>
+              <p>Ative a avaliação (seção 05) para habilitar a assinatura.</p>
+            </div>
+          ) : !signatureEnabled ? (
+            <div className={styles.signatureActivate}>
+              <p>Ative a assinatura digital do responsável para finalizar a ficha.</p>
+              <button
+                className={styles.btnActivate}
+                type="button"
+                onClick={() => setSignatureEnabled(true)}
+              >
+                <i className="fa-solid fa-pen-nib" />
+                Ativar Assinatura
+              </button>
+            </div>
+          ) : (
+            <div className={styles.signatureWrapper}>
+              <canvas
+                ref={signatureCanvasRef}
+                className={`${styles.signatureCanvas} ${signatureConfirmed ? styles.confirmed : ''}`}
+                onMouseDown={onSigStart}
+                onMouseMove={onSigMove}
+                onMouseUp={onSigEnd}
+                onMouseLeave={onSigEnd}
+                onTouchStart={onSigStart}
+                onTouchMove={onSigMove}
+                onTouchEnd={onSigEnd}
+              />
+              <div className={styles.signatureBtns}>
+                {!signatureConfirmed ? (
+                  <>
+                    <button className={styles.btnClear} type="button" onClick={clearSignature}>
+                      <i className="fa-solid fa-rotate-left" /> Limpar
+                    </button>
+                    <button className={styles.btnConfirm} type="button" onClick={confirmSignature}>
+                      <i className="fa-solid fa-check" /> Confirmar Assinatura
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.signatureConfirmedBadge}>
+                      <i className="fa-solid fa-circle-check" /> Assinatura Confirmada
+                    </span>
+                    <button className={styles.btnClear} type="button" onClick={clearSignature}>
+                      <i className="fa-solid fa-rotate-left" /> Refazer
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ==================== Generate PDF ==================== */}
+      <div className={styles.pdfSection}>
+        <button className={styles.btnPdf} type="button" onClick={generatePDF}>
+          <i className="fa-solid fa-file-pdf" />
+          Gerar Relatório PDF
+        </button>
+      </div>
+
+      {/* ---------- Toast ---------- */}
+      {toast && (
+        <div className={`${styles.toast} ${styles[toast.type]}`}>
+          <i
+            className={`fa-solid ${
+              toast.type === 'success'
+                ? 'fa-circle-check'
+                : toast.type === 'error'
+                ? 'fa-circle-xmark'
+                : 'fa-circle-info'
+            }`}
+          />
+          {toast.message}
+        </div>
+      )}
+
+      {/* ---------- Tooltip ---------- */}
+      {tooltip && (
+        <div
+          className={styles.tooltip}
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+
+      {/* ---------- Lightbox ---------- */}
+      {lightboxIndex !== null && photos[lightboxIndex] && (
+        <div
+          className={styles.lightboxOverlay}
+          onClick={() => setLightboxIndex(null)}
+        >
+          <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
+            <button
+              className={styles.lightboxClose}
+              type="button"
+              onClick={() => setLightboxIndex(null)}
+            >
+              <i className="fa-solid fa-xmark" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className={styles.lightboxImg}
+              src={photos[lightboxIndex].dataUrl}
+              alt={`Foto ${lightboxIndex + 1}`}
+            />
+            <div className={styles.lightboxNav}>
+              <button
+                className={styles.lightboxNavBtn}
+                type="button"
+                disabled={lightboxIndex === 0}
+                onClick={() => setLightboxIndex((i) => (i !== null ? i - 1 : null))}
+              >
+                <i className="fa-solid fa-chevron-left" /> Anterior
+              </button>
+              <span className={styles.lightboxIndex}>
+                {lightboxIndex + 1} / {photos.length}
+              </span>
+              <button
+                className={styles.lightboxNavBtn}
+                type="button"
+                disabled={lightboxIndex === photos.length - 1}
+                onClick={() => setLightboxIndex((i) => (i !== null ? i + 1 : null))}
+              >
+                Próxima <i className="fa-solid fa-chevron-right" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
