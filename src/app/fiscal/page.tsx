@@ -146,8 +146,6 @@ interface ToastState {
   type: 'success' | 'error' | 'info';
 }
 
-type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
-
 interface TooltipState {
   text: string;
   x: number;
@@ -266,7 +264,7 @@ export default function FiscalPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   /* ----- refs ----- */
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -567,62 +565,10 @@ export default function FiscalPage() {
 
   const hideTooltip = () => setTooltip(null);
 
-  /* ======================== AZURE UPLOAD ======================== */
-  const uploadPdfToServer = useCallback(
-    async (blob: Blob, filename: string): Promise<void> => {
-      setUploadStatus('uploading');
-      try {
-        // Step 1: get a SAS upload URL from the server (sends only metadata, not the PDF)
-        const metaRes = await fetch('/api/get-upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cliente: clientName,
-            tecnico: technicianName,
-            fiscal: fiscalName,
-            data: visitDate,
-            score: pct,
-            checklist,
-          }),
-        });
-        const metaJson = await metaRes.json().catch(() => ({}));
-        if (!metaRes.ok || !metaJson.success) {
-          const errMsg = metaJson.error || `HTTP ${metaRes.status}`;
-          throw new Error(errMsg);
-        }
-
-        const { uploadUrl } = metaJson as { uploadUrl: string; blobName: string };
-
-        // Step 2: upload the PDF directly from the browser to Azure (bypasses Vercel size limit)
-        const putRes = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: {
-            'x-ms-blob-type': 'BlockBlob',
-            'Content-Type': 'application/pdf',
-          },
-          body: blob,
-        });
-        if (!putRes.ok) {
-          throw new Error(`Azure upload failed: HTTP ${putRes.status}`);
-        }
-
-        setUploadStatus('success');
-        showToast('PDF salvo com sucesso no servidor!', 'success');
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        setUploadStatus('error');
-        showToast(`Erro ao salvar: ${message}`, 'error');
-        throw err;
-      }
-    },
-    [clientName, technicianName, fiscalName, visitDate, pct, checklist, showToast]
-  );
-
   /* ======================== PDF GENERATION ======================== */
   const generatePDF = useCallback(async () => {
-    setUploadStatus('uploading');
+    setIsGenerating(true);
     showToast('Gerando PDF...', 'info');
-    let uploadAttempted = false;
     try {
       const { default: jsPDF } = await import('jspdf');
       const { default: autoTable } = await import('jspdf-autotable');
@@ -1019,23 +965,32 @@ export default function FiscalPage() {
       const filename = `ficha_fiscal_${clientName.replace(/\s+/g, '_') || 'silvernet'}_${visitDate}.pdf`;
 
       const blob = doc.output('blob');
-      showToast('Enviando para o servidor...', 'info');
-      uploadAttempted = true;
-      await uploadPdfToServer(blob, filename);
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'Ficha Fiscal', text: 'Relatório de Instalação', files: [file] });
+        } catch (e: unknown) {
+          if ((e as { name?: string }).name !== 'AbortError') {
+            showToast('Compartilhamento cancelado.', 'error');
+          }
+        }
+      } else {
+        const desejaBaixar = window.confirm('Seu dispositivo não suporta compartilhamento direto. Deseja baixar o PDF?');
+        if (desejaBaixar) {
+          doc.save(filename);
+        }
+      }
     } catch (err) {
       console.error(err);
-      // uploadPdfToServer already shows the error toast and sets status to 'error'
-      // Only show generic error toast if the failure happened during PDF generation
-      if (!uploadAttempted) {
-        showToast('Erro ao gerar PDF. Tente novamente.', 'error');
-        setUploadStatus('error');
-      }
+      showToast('Erro ao gerar PDF. Tente novamente.', 'error');
+    } finally {
+      setIsGenerating(false);
     }
   }, [
     clientName, technicianName, fiscalName, visitDate,
     gpsAddress, gpsCoords, checklist, observations, photos,
     ratingEnabled, ratings, signatureDataUrl,
-    pct, sim, nao, na, showToast, uploadPdfToServer,
+    pct, sim, nao, na, showToast,
   ]);
 
   /* ============================================================
@@ -1494,21 +1449,11 @@ export default function FiscalPage() {
           className={styles.btnPdf}
           type="button"
           onClick={generatePDF}
-          disabled={uploadStatus === 'uploading'}
+          disabled={isGenerating}
         >
-          <i className={`fa-solid ${uploadStatus === 'uploading' ? 'fa-spinner fa-spin' : 'fa-cloud-arrow-up'}`} />
-          {uploadStatus === 'uploading' ? 'Processando...' : 'Gerar & Salvar PDF'}
+          <i className={`fa-solid ${isGenerating ? 'fa-spinner fa-spin' : 'fa-file-export'}`} />
+          {isGenerating ? 'Gerando PDF...' : 'Gerar & Compartilhar PDF'}
         </button>
-        {uploadStatus !== 'idle' && uploadStatus !== 'uploading' && (
-          <span className={`${styles.uploadIndicator} ${styles[`upload_${uploadStatus}`]}`}>
-            {uploadStatus === 'success' && (
-              <><i className="fa-solid fa-cloud-arrow-up" /> Salvo</>
-            )}
-            {uploadStatus === 'error' && (
-              <><i className="fa-solid fa-triangle-exclamation" /> Falha no upload</>
-            )}
-          </span>
-        )}
       </div>
 
       {/* ---------- Toast ---------- */}
