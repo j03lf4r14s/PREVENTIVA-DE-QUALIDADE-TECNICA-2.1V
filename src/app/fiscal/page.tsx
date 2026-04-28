@@ -669,8 +669,8 @@ export default function FiscalPage() {
           ['Fiscal', fiscalName || '—', 'Data', visitDate || '—'],
         ],
         styles: {
-          fontSize: 9,
-          cellPadding: 3,
+          fontSize: 15,
+          cellPadding: 4,
           fillColor: [26, 26, 26],
           textColor: [232, 232, 232],
           lineColor: [42, 42, 42],
@@ -678,10 +678,10 @@ export default function FiscalPage() {
           overflow: 'linebreak' as const,
         },
         columnStyles: {
-          0: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25 },
-          1: { cellWidth: 60 },
-          2: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25 },
-          3: { cellWidth: 60 },
+          0: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25, fontSize: 10 },
+          1: { cellWidth: 60, fontSize: 15 },
+          2: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25, fontSize: 10 },
+          3: { cellWidth: 60, fontSize: 15 },
         },
         theme: 'grid',
       });
@@ -740,7 +740,7 @@ export default function FiscalPage() {
       const afterChecklist = (doc as any).lastAutoTable.finalY + 5;
 
       // Score row
-      doc.setFontSize(9);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(140, 140, 140);
       doc.text(
@@ -756,16 +756,16 @@ export default function FiscalPage() {
 
       // Safe bottom boundary: footer line is at pH-10, keep content above pH-14
       const BODY_BOT = pH - 14;
-      const OBS_LINE_H = 4.5;
+      const OBS_LINE_H = 8;
 
       let y = 16;
-      doc.setFontSize(10);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(229, 0, 18);
       doc.text('03 — OBSERVAÇÕES', margin, y);
-      y += 5;
+      y += 8;
 
-      doc.setFontSize(8.5);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(210, 210, 210);
       const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
@@ -777,7 +777,7 @@ export default function FiscalPage() {
           doc.setFillColor(10, 10, 10);
           doc.rect(0, 0, pW, pH, 'F');
           y = 16;
-          doc.setFontSize(8.5);
+          doc.setFontSize(20);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(210, 210, 210);
         }
@@ -837,7 +837,7 @@ export default function FiscalPage() {
           const commentLines = comentario
             ? doc.splitTextToSize(comentario, imgW)
             : ([] as string[]);
-          const commentH = commentLines.length > 0 ? commentLines.length * 4.5 + 10 : 0;
+          const commentH = commentLines.length > 0 ? commentLines.length * 8 + 10 : 0;
 
           const maxImgH = pH - py - 20 - commentH;
           const imgH = Math.min(imgW * aspectRatio, maxImgH);
@@ -856,11 +856,13 @@ export default function FiscalPage() {
 
           /* Comment below photo */
           if (commentLines.length > 0) {
-            doc.setFontSize(8.5);
+            doc.setFontSize(20);
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(200, 200, 200);
-            doc.text(commentLines, margin, py);
-            py += commentH;
+            commentLines.forEach((cl: string) => {
+              doc.text(cl, margin, py);
+              py += 8;
+            });
           }
 
           // Update currentY to reflect position on the last photo's page
