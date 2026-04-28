@@ -650,7 +650,7 @@
 }
 
 .star {
-  font-size: 22px;
+  font-size: 34px;
   cursor: pointer;
   transition: color 0.1s, transform 0.1s;
   user-select: none;
@@ -930,7 +930,7 @@
   .photoActions { gap: 6px; }
   .photoGrid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
   .stars { gap: 3px; }
-  .star { font-size: 20px; }
+  .star { font-size: 28px; }
   .btnPdf { padding: 12px 24px; font-size: 14px; }
   .toast { right: 12px; bottom: 12px; max-width: calc(100vw - 24px); }
 }
