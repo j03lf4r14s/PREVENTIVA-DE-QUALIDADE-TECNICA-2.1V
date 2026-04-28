@@ -964,10 +964,10 @@ export default function FiscalPage() {
         addFooter(p, totalPages);
       }
 
-      const dataFormatada = visitDate ? visitDate.split('-').reverse().join('_') : new Date().toLocaleDateString('pt-BR').replace(/\//g, '_');
+      const dataFormatada = visitDate ? visitDate.split('-').reverse().join('-') : new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       const nomeTec = technicianName.replace(/\s+/g, '_') || 'Tecnico';
       const nomeCli = clientName.replace(/\s+/g, '_') || 'Cliente';
-      const filename = `ficha_fiscal_${nomeTec}_${nomeCli}_${dataFormatada}.pdf`;
+      const filename = `${nomeTec}-${nomeCli}-${dataFormatada}.pdf`;
 
       const blob = doc.output('blob');
       const file = new File([blob], filename, { type: 'application/pdf' });
