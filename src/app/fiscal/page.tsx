@@ -765,7 +765,7 @@ export default function FiscalPage() {
       doc.text('03 — OBSERVAÇÕES', margin, y);
       y += 8;
 
-      doc.setFontSize(45);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(210, 210, 210);
       const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
@@ -777,7 +777,7 @@ export default function FiscalPage() {
           doc.setFillColor(10, 10, 10);
           doc.rect(0, 0, pW, pH, 'F');
           y = 16;
-          doc.setFontSize(45);
+          doc.setFontSize(20);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(210, 210, 210);
         }
@@ -856,7 +856,7 @@ export default function FiscalPage() {
 
           /* Comment below photo */
           if (commentLines.length > 0) {
-            doc.setFontSize(45);
+            doc.setFontSize(20);
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(200, 200, 200);
             commentLines.forEach((cl: string) => {
