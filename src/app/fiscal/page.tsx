@@ -572,20 +572,40 @@ export default function FiscalPage() {
     async (blob: Blob, filename: string): Promise<void> => {
       setUploadStatus('uploading');
       try {
-        const fd = new FormData();
-        fd.append('pdf', blob, filename);
-        fd.append('cliente', clientName);
-        fd.append('tecnico', technicianName);
-        fd.append('fiscal', fiscalName);
-        fd.append('data', visitDate);
-        fd.append('score', String(pct));
-
-        const res = await fetch('/api/upload-pdf', { method: 'POST', body: fd });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json.success) {
-          const errMsg = json.error || `HTTP ${res.status}`;
+        // Step 1: get a SAS upload URL from the server (sends only metadata, not the PDF)
+        const metaRes = await fetch('/api/get-upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cliente: clientName,
+            tecnico: technicianName,
+            fiscal: fiscalName,
+            data: visitDate,
+            score: pct,
+            checklist,
+          }),
+        });
+        const metaJson = await metaRes.json().catch(() => ({}));
+        if (!metaRes.ok || !metaJson.success) {
+          const errMsg = metaJson.error || `HTTP ${metaRes.status}`;
           throw new Error(errMsg);
         }
+
+        const { uploadUrl } = metaJson as { uploadUrl: string; blobName: string };
+
+        // Step 2: upload the PDF directly from the browser to Azure (bypasses Vercel size limit)
+        const putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'x-ms-blob-type': 'BlockBlob',
+            'Content-Type': 'application/pdf',
+          },
+          body: blob,
+        });
+        if (!putRes.ok) {
+          throw new Error(`Azure upload failed: HTTP ${putRes.status}`);
+        }
+
         setUploadStatus('success');
         showToast('PDF salvo com sucesso no servidor!', 'success');
       } catch (err: unknown) {
@@ -595,7 +615,7 @@ export default function FiscalPage() {
         throw err;
       }
     },
-    [clientName, technicianName, fiscalName, visitDate, pct, showToast]
+    [clientName, technicianName, fiscalName, visitDate, pct, checklist, showToast]
   );
 
   /* ======================== PDF GENERATION ======================== */
