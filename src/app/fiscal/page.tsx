@@ -447,10 +447,10 @@ export default function FiscalPage() {
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
 
-      doc.setFillColor(3, 3, 3);
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pageW, pageH, 'F');
       doc.setFontSize(10);
-      doc.setTextColor(200, 200, 200);
+      doc.setTextColor(50, 50, 50);
       doc.text('SilverNet Tecnologia — Ficha Fiscal Técnica', pageW / 2, 12, { align: 'center' });
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
@@ -492,9 +492,9 @@ export default function FiscalPage() {
     // Set intrinsic size to match CSS display size so getSignaturePos scale ratio stays 1:1
     canvas.width = canvas.offsetWidth || 600;
     canvas.height = canvas.offsetHeight || 180;
-    ctx.fillStyle = '#1A1A1A';
+    ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#E8E8E8';
+    ctx.strokeStyle = '#333333';
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -580,7 +580,7 @@ export default function FiscalPage() {
 
       const addFooter = (pageNum: number, totalPages: number) => {
         doc.setFontSize(7);
-        doc.setTextColor(80, 80, 80);
+        doc.setTextColor(120, 120, 120);
         doc.text(
           `SilverNet Tecnologia | Ficha Fiscal Técnica | Pág. ${pageNum}/${totalPages}`,
           pW / 2,
@@ -593,7 +593,7 @@ export default function FiscalPage() {
       };
 
       /* ---- PAGE 1: Cover ---- */
-      doc.setFillColor(3, 3, 3);
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pW, pH, 'F');
 
       doc.setFillColor(229, 0, 18);
@@ -601,14 +601,14 @@ export default function FiscalPage() {
 
       doc.setFontSize(28);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(232, 232, 232);
+      doc.setTextColor(50, 50, 50);
       doc.text('SILVERNET', pW / 2, 40, { align: 'center' });
       doc.setTextColor(229, 0, 18);
       doc.text('TECNOLOGIA', pW / 2, 52, { align: 'center' });
 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(120, 120, 120);
+      doc.setTextColor(100, 100, 100);
       doc.text('FICHA FISCAL TÉCNICA', pW / 2, 63, { align: 'center' });
 
       doc.setDrawColor(229, 0, 18);
@@ -631,7 +631,7 @@ export default function FiscalPage() {
         doc.setFont('helvetica', 'normal');
         doc.text(label.toUpperCase(), margin, cy);
         doc.setFontSize(10);
-        doc.setTextColor(232, 232, 232);
+        doc.setTextColor(50, 50, 50);
         doc.setFont('helvetica', 'bold');
         const lines = doc.splitTextToSize(value, pW - margin * 2 - 30);
         doc.text(lines, margin, cy + 5);
@@ -641,7 +641,7 @@ export default function FiscalPage() {
       if (gpsCoords) {
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(140, 140, 140);
         doc.text(
           `GPS: ${gpsCoords.lat.toFixed(6)}, ${gpsCoords.lng.toFixed(6)}`,
           margin,
@@ -653,7 +653,7 @@ export default function FiscalPage() {
 
       /* ---- PAGE 2: Visit Data + Checklist ---- */
       doc.addPage();
-      doc.setFillColor(10, 10, 10);
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pW, pH, 'F');
 
       doc.setFontSize(10);
@@ -671,16 +671,16 @@ export default function FiscalPage() {
         styles: {
           fontSize: 15,
           cellPadding: 4,
-          fillColor: [26, 26, 26],
-          textColor: [232, 232, 232],
-          lineColor: [42, 42, 42],
+          fillColor: [240, 240, 240],
+          textColor: [50, 50, 50],
+          lineColor: [200, 200, 200],
           lineWidth: 0.2,
           overflow: 'linebreak' as const,
         },
         columnStyles: {
-          0: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25, fontSize: 10 },
+          0: { fontStyle: 'bold', textColor: [100, 100, 100], cellWidth: 25, fontSize: 10 },
           1: { cellWidth: 60, fontSize: 15 },
-          2: { fontStyle: 'bold', textColor: [140, 140, 140], cellWidth: 25, fontSize: 10 },
+          2: { fontStyle: 'bold', textColor: [100, 100, 100], cellWidth: 25, fontSize: 10 },
           3: { cellWidth: 60, fontSize: 15 },
         },
         theme: 'grid',
@@ -706,9 +706,9 @@ export default function FiscalPage() {
         styles: {
           fontSize: 8,
           cellPadding: 2,
-          fillColor: [17, 17, 17],
-          textColor: [220, 220, 220],
-          lineColor: [42, 42, 42],
+          fillColor: [245, 245, 245],
+          textColor: [50, 50, 50],
+          lineColor: [200, 200, 200],
           lineWidth: 0.2,
         },
         headStyles: {
@@ -724,13 +724,13 @@ export default function FiscalPage() {
         didParseCell: (data) => {
           if (data.column.index === 2 && data.section === 'body') {
             if (data.cell.raw === 'Sim') {
-              data.cell.styles.textColor = [0, 200, 83];
+              data.cell.styles.textColor = [0, 150, 50];
               data.cell.styles.fontStyle = 'bold';
             } else if (data.cell.raw === 'Não') {
               data.cell.styles.textColor = [229, 0, 18];
               data.cell.styles.fontStyle = 'bold';
             } else if (data.cell.raw === 'N/A') {
-              data.cell.styles.textColor = [100, 100, 100];
+              data.cell.styles.textColor = [140, 140, 140];
             }
           }
         },
@@ -742,7 +742,7 @@ export default function FiscalPage() {
       // Score row
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(140, 140, 140);
+      doc.setTextColor(80, 80, 80);
       doc.text(
         `Conformidade: ${pct}%   |   Sim: ${sim}   Não: ${nao}   N/A: ${na}`,
         margin,
@@ -751,7 +751,7 @@ export default function FiscalPage() {
 
       /* ---- PAGE 3: Observations ---- */
       doc.addPage();
-      doc.setFillColor(10, 10, 10);
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, pW, pH, 'F');
 
       // Safe bottom boundary: footer line is at pH-10, keep content above pH-14
@@ -767,19 +767,19 @@ export default function FiscalPage() {
 
       doc.setFontSize(20);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(210, 210, 210);
+      doc.setTextColor(60, 60, 60);
       const obsLines = doc.splitTextToSize(observations || 'Sem observações registradas.', pW - margin * 2);
 
       // Issue 1 fix: render each observation line individually, break page when needed
       for (const line of obsLines) {
         if (y + OBS_LINE_H > BODY_BOT) {
           doc.addPage();
-          doc.setFillColor(10, 10, 10);
+          doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, pW, pH, 'F');
           y = 16;
           doc.setFontSize(20);
           doc.setFont('helvetica', 'normal');
-          doc.setTextColor(210, 210, 210);
+          doc.setTextColor(60, 60, 60);
         }
         doc.text(line, margin, y);
         y += OBS_LINE_H;
@@ -803,7 +803,7 @@ export default function FiscalPage() {
           const photo = photos[i];
 
           doc.addPage();
-          doc.setFillColor(10, 10, 10);
+          doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, pW, pH, 'F');
 
           let py = 16;
@@ -816,7 +816,7 @@ export default function FiscalPage() {
 
           doc.setFontSize(8);
           doc.setFont('helvetica', 'normal');
-          doc.setTextColor(100, 100, 100);
+          doc.setTextColor(120, 120, 120);
           doc.text(
             `Foto ${i + 1} de ${photos.length}${photo.fromCamera ? ' · câmera' : ' · galeria'}`,
             margin,
@@ -845,10 +845,10 @@ export default function FiscalPage() {
           try {
             doc.addImage(photo.dataUrl, 'JPEG', margin, py, imgW, imgH, undefined, 'NONE');
           } catch {
-            doc.setFillColor(26, 26, 26);
+            doc.setFillColor(240, 240, 240);
             doc.rect(margin, py, imgW, imgH, 'F');
             doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
+            doc.setTextColor(120, 120, 120);
             doc.text('Imagem não disponível', margin + imgW / 2, py + imgH / 2, { align: 'center' });
           }
 
@@ -858,7 +858,7 @@ export default function FiscalPage() {
           if (commentLines.length > 0) {
             doc.setFontSize(20);
             doc.setFont('helvetica', 'italic');
-            doc.setTextColor(200, 200, 200);
+            doc.setTextColor(80, 80, 80);
             commentLines.forEach((cl: string) => {
               doc.text(cl, margin, py);
               py += 8;
@@ -876,7 +876,7 @@ export default function FiscalPage() {
         const RATINGS_NEEDED = 80;
         if (BODY_BOT - currentY < RATINGS_NEEDED) {
           doc.addPage();
-          doc.setFillColor(10, 10, 10);
+          doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, pW, pH, 'F');
           currentY = 16;
         }
@@ -897,7 +897,7 @@ export default function FiscalPage() {
         ratingGroups.forEach(([label, score]) => {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'bold');
-          doc.setTextColor(180, 180, 180);
+          doc.setTextColor(80, 80, 80);
           doc.text(label, margin, ry);
 
           const starSize = 5;
@@ -905,7 +905,7 @@ export default function FiscalPage() {
           let sx = margin + 35;
           for (let s = 1; s <= 10; s++) {
             doc.setFontSize(10);
-            doc.setTextColor(s <= score ? 255 : 50, s <= score ? 214 : 50, s <= score ? 0 : 50);
+            doc.setTextColor(s <= score ? 255 : 150, s <= score ? 214 : 150, s <= score ? 0 : 150);
             doc.text('★', sx, ry + 0.5);
             sx += starSize + starGap;
           }
@@ -929,7 +929,7 @@ export default function FiscalPage() {
 
         if (BODY_BOT - currentY < SIGNATURE_NEEDED) {
           doc.addPage();
-          doc.setFillColor(10, 10, 10);
+          doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, pW, pH, 'F');
           currentY = 16;
         }
@@ -942,7 +942,7 @@ export default function FiscalPage() {
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(120, 120, 120);
+        doc.setTextColor(100, 100, 100);
         doc.text(`Assinado digitalmente em: ${formatDate(new Date())}`, margin, currentY);
         currentY += 6;
 
@@ -953,7 +953,7 @@ export default function FiscalPage() {
         doc.line(margin, currentY + sigH + 4, pW - margin, currentY + sigH + 4);
 
         doc.setFontSize(8);
-        doc.setTextColor(160, 160, 160);
+        doc.setTextColor(100, 100, 100);
         doc.text(clientName || 'Responsável', pW / 2, currentY + sigH + 10, { align: 'center' });
       }
 
