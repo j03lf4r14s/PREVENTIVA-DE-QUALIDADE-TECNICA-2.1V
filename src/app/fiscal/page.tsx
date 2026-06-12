@@ -172,6 +172,17 @@ function formatDate(d: Date): string {
   });
 }
 
+// Sanitize filename: remove special chars, accents, and spaces
+function sanitizeFilename(text: string): string {
+  return text
+    .normalize('NFD') // decompose accents
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/[^\w\s-]/g, '') // remove special chars
+    .replace(/\s+/g, '_') // replace spaces with underscore
+    .replace(/_+/g, '_') // remove multiple underscores
+    .substring(0, 30); // limit length
+}
+
 async function addPhotoOverlay(
   dataUrl: string,
   timestamp: string,
@@ -835,11 +846,13 @@ export default function FiscalPage() {
           /* Reserve space below image for comment if present */
           const comentario = photo.comentario?.trim() || '';
           const commentLines = comentario
-            ? doc.splitTextToSize(comentario, imgW)
+            ? doc.splitTextToSize(comentario, imgW - 4)
             : ([] as string[]);
-          const commentH = commentLines.length > 0 ? commentLines.length * 8 + 10 : 0;
-
-          const maxImgH = pH - py - 20 - commentH;
+          
+          // Calculate total space needed: title (6) + photo info (6) + image + comments + footer (10)
+          const COMMENT_LINE_H = 6;
+          const commentH = commentLines.length > 0 ? (commentLines.length * COMMENT_LINE_H) + 6 : 0;
+          const maxImgH = Math.max(60, pH - py - 20 - commentH);
           const imgH = Math.min(imgW * aspectRatio, maxImgH);
 
           try {
@@ -852,16 +865,19 @@ export default function FiscalPage() {
             doc.text('Imagem não disponível', margin + imgW / 2, py + imgH / 2, { align: 'center' });
           }
 
-          py += imgH + 5;
+          py += imgH + 4;
 
-          /* Comment below photo */
+          /* Comment below photo - with proper spacing */
           if (commentLines.length > 0) {
-            doc.setFontSize(20);
+            doc.setFontSize(8);
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(80, 80, 80);
+            doc.text('Observação:', margin + 2, py);
+            py += COMMENT_LINE_H;
+            
             commentLines.forEach((cl: string) => {
-              doc.text(cl, margin, py);
-              py += 8;
+              doc.text(cl, margin + 2, py);
+              py += COMMENT_LINE_H;
             });
           }
 
@@ -964,10 +980,11 @@ export default function FiscalPage() {
         addFooter(p, totalPages);
       }
 
+      // FIX: Generate clean filename without accents and special characters
       const dataFormatada = visitDate ? visitDate.split('-').reverse().join('-') : new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
-      const nomeTec = technicianName.replace(/\s+/g, '_') || 'Tecnico';
-      const nomeCli = clientName.replace(/\s+/g, '_') || 'Cliente';
-      const filename = `${nomeTec}-${nomeCli}-${dataFormatada}.pdf`;
+      const nomeTec = sanitizeFilename(technicianName) || 'Tecnico';
+      const nomeCli = sanitizeFilename(clientName) || 'Cliente';
+      const filename = `SILVERNET_${nomeTec}_${nomeCli}_${dataFormatada}.pdf`;
 
       const blob = doc.output('blob');
       const file = new File([blob], filename, { type: 'application/pdf' });
