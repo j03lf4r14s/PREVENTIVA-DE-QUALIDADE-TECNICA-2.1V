@@ -20,6 +20,26 @@
   --font-mono: 'Roboto Mono', monospace;
 }
 
+/* Tema Claro */
+html[data-theme="light"] {
+  --red: #E50012;
+  --red-dark: #B0000E;
+  --red-glow: rgba(229, 0, 18, 0.15);
+  --bg: #FFFFFF;
+  --s1: #F5F5F5;
+  --s2: #EEEEEE;
+  --s3: #E8E8E8;
+  --s4: #DEDEDE;
+  --border: #D0D0D0;
+  --border-light: #C0C0C0;
+  --text: #1A1A1A;
+  --text-muted: #666666;
+  --text-dim: #999999;
+  --green: #00A844;
+  --yellow: #FFC400;
+  --blue: #1976D2;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -41,6 +61,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a { color: inherit; text-decoration: none; }
